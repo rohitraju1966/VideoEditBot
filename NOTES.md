@@ -19,24 +19,26 @@ Commits follow Conventional Commits (`feat(scope): ...`), per git-workflow.
 
 ## Footage
 
-**Corpus not yet chosen.** `~/Desktop/Youtube/2025_recap` was investigated and
-ruled out by Rohit — not the folder to use. Its findings are kept only as a
-warning: 132 files, ~15 GB, and every one iCloud-dataless.
+Footage is copied into `raw/` in this project folder (gitignored). Settled
+2026-09-07: the laptop files are already copies — the originals live on Rohit's
+phone — so `raw/` is the working set, not the last surviving copy. A real copy
+rather than a symlink, so "never write to `raw/`" holds without depending on
+link-following behaviour.
 
-Whatever folder is chosen, check `stat -f '%Sf' <file>` for `dataless` before
-planning a run.
+`~/Desktop/Youtube/2025_recap` was investigated and ruled out. Kept only as a
+warning: every file there was iCloud-dataless, so reads blocked on a full
+download. Check `stat -f '%Sf' <file>` for `dataless` on whatever lands in
+`raw/` before planning a run.
 
 ## Open questions
 
-- **Which folder is the corpus?** Blocking everything downstream.
+- **Transfer in progress** — waiting on footage landing in `raw/`. File count
+  and naming scheme unknown until then.
 - **Watch for iCloud-dataless files.** In `2025_recap` every file reported
   `compressed,dataless` with 0 local blocks; reads block on a full download
   (`ffprobe` on one 131 MB file took minutes to return a 14 s duration). If the
   real corpus is offloaded too, transcription is bound by network, not compute —
   and it will hang rather than fail loudly. Materialize locally first.
-- `raw/` does not exist yet. Decide: copy footage in, or symlink. Symlink is
-  cheaper but makes the "never write to raw/" rule depend on not following the
-  link. Leaning copy.
 - faster-whisper not installed. ffmpeg 8.1.2 and Python 3.11.5 are present.
 
 ## Last run
