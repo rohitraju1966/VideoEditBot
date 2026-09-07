@@ -19,21 +19,24 @@ Commits follow Conventional Commits (`feat(scope): ...`), per git-workflow.
 
 ## Footage
 
-Candidate corpus: `~/Desktop/Youtube/2025_recap` — 132 videos (122 .MOV, 7 .MP4,
-3 .mov), ~15 GB apparent. Also 3 HEIC + 2 PNG stills to exclude, and
-`2025Recap.mov` (672 MB) which looks like a previous render, not raw.
+**Corpus not yet chosen.** `~/Desktop/Youtube/2025_recap` was investigated and
+ruled out by Rohit — not the folder to use. Its findings are kept only as a
+warning: 132 files, ~15 GB, and every one iCloud-dataless.
+
+Whatever folder is chosen, check `stat -f '%Sf' <file>` for `dataless` before
+planning a run.
 
 ## Open questions
 
-- **Blocker: every file is iCloud-dataless.** `stat -f %Sf` reports
-  `compressed,dataless` with 0 local blocks on all of them. Reads block on
-  network download. `ffprobe` on one 131 MB file eventually succeeded but took
-  minutes — it pulls the whole file first. At that rate 15 GB of transcription
-  is dominated by download time, not compute. Materialize the corpus locally
-  before running anything.
-- `raw/` does not exist yet. Decide: copy footage in, or symlink to
-  `2025_recap`. Symlink is cheaper but makes the "never write to raw/" rule
-  depend on not following the link.
+- **Which folder is the corpus?** Blocking everything downstream.
+- **Watch for iCloud-dataless files.** In `2025_recap` every file reported
+  `compressed,dataless` with 0 local blocks; reads block on a full download
+  (`ffprobe` on one 131 MB file took minutes to return a 14 s duration). If the
+  real corpus is offloaded too, transcription is bound by network, not compute —
+  and it will hang rather than fail loudly. Materialize locally first.
+- `raw/` does not exist yet. Decide: copy footage in, or symlink. Symlink is
+  cheaper but makes the "never write to raw/" rule depend on not following the
+  link. Leaning copy.
 - faster-whisper not installed. ffmpeg 8.1.2 and Python 3.11.5 are present.
 
 ## Last run
