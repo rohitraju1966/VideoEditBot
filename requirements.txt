@@ -1,0 +1,10 @@
+# Transcription. Pulls in numpy and ctranslate2.
+faster-whisper>=1.2
+
+# Apple Vision framework bindings — on-device aesthetics, classification and
+# face detection. macOS only; pass --no-vision to transcribe.py to skip.
+pyobjc-framework-Vision>=10.0
+pyobjc-framework-Quartz>=10.0
+
+# ffmpeg and ffprobe are called as subprocesses, not imported.
+# Install separately:  brew install ffmpeg
