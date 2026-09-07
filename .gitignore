@@ -1,0 +1,14 @@
+# Footage and derived artifacts — never commit. raw/ is irreplaceable and huge.
+raw/
+index/
+work/
+out/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# macOS
+.DS_Store
