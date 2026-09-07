@@ -79,13 +79,25 @@ EDL needs human review before render.
 
 ## Context
 
-- `mcp-video` (KyaniteLabs, Apache-2.0) wraps ffmpeg with typed MCP tools and has a
-  usable EDL/approval layer. Low star count, actively maintained, single main author.
-  Optional — plain ffmpeg is the real dependency and the fallback.
+- `mcp-video` is now **`kinocut`** (KyaniteLabs, Apache-2.0) — same repo, renamed.
+  Wraps ffmpeg with typed MCP tools and has a usable EDL/approval layer. ~141 stars,
+  actively maintained. Optional — plain ffmpeg is the real dependency and the fallback.
 - Its semantic index stores and queries a supplied index; it does not build one, and
   it binds one index per source file. There is no cross-corpus layer. That's ours.
 - Evaluated and rejected: Clipto (subscription), Video Jungle (hosted API),
-  Descript (paid tiers gate the AI features).
+  Descript (paid tiers gate the AI features — now also an official Claude connector,
+  but the pricing objection stands).
+- Surveyed 2026-09-07 and rejected for this use: Adobe's official "Adobe for
+  creativity" connector (hosted, asset-upload, usage-limited — wrong shape for 130
+  local files), DaVinci Resolve MCP (drives a GUI NLE; we want headless files),
+  Premiere Pro MCPs (community, largely scaffolded).
+- **OpenTimelineIO** (Pixar → ASWF, Apache-2.0, `pip install OpenTimelineIO`) is the
+  real industry format for timeline interchange, and it round-trips to FCPXML and
+  Resolve. Worth adding later as an *export target* so an EDL can open in a real NLE.
+  Not a replacement for `edl.json` — OTIO JSON is too verbose to hand-edit, and
+  hand-editability is the point.
+- No tool found solves cross-file narrative selection over a corpus. Corpus-scale
+  tooling that exists is for logging and prep, not for choosing takes. The gap is real.
 
 ## Working state
 
