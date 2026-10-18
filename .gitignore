@@ -1,14 +1,38 @@
-# Footage and derived artifacts — never commit. raw/ is irreplaceable and huge.
-raw/
-index/
-work/
-out/
+# ---- personal / channel-specific: stays on this Mac ----
+assets/*
+!assets/README.md
+music/*
+!music/README.md
+projects/*
+!projects/README.md
+vlog-editor-skill/profiles/*
+!vlog-editor-skill/profiles/example.md
 
-# Python
+# ---- media & renders, wherever they end up ----
+*.mov
+*.MOV
+*.mp4
+*.MP4
+*.m4v
+*.mp3
+*.wav
+*.aac
+*.m4a
+*.heic
+*.HEIC
+*.png
+*.jpg
+*.jpeg
+*.drt
+work*/
+previews/
+
+# ---- build / system ----
+vlog-editor-skill/scripts/cutout
 __pycache__/
 *.pyc
-.venv/
-venv/
-
-# macOS
 .DS_Store
+.venv/
+
+# skill test runs
+vlog-editor-workspace/

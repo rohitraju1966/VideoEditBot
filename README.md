@@ -1,124 +1,104 @@
-# VideoEditBot
+# Video Editor — an AI vlog-editing skill for Claude
 
-A corpus-scale vlog editor. It takes a folder of ~130 raw vlog files and produces
-an ordered edit decision list that renders into one coherent video.
+Hand Claude a folder of phone clips and get back a finished, YouTube-ready vlog: story structure,
+tight jump cuts, synced captions, beat-matched montages, a proper music mix, subtle color, titles,
+your channel intro/outro, a 4K export, thumbnails and a social trailer — with short previews to review
+along the way.
 
-The hard part is **cross-file narrative selection**: deciding which takes to keep,
-in what order, and where to cut. Existing tools solve per-file editing well. None
-of them solve selection across a whole corpus. That gap is the reason this repo
-exists.
+It runs **entirely on your Mac**: ffmpeg + VideoToolbox for video, `mlx-whisper` for speech-to-text,
+Pillow for graphics, Apple Vision for thumbnail cut-outs. No footage leaves your machine.
 
-> **Status: scaffolding.** The pipeline described below is the design, not yet the
-> implementation. No stage is built. See [NOTES.md](NOTES.md) for where things
-> actually stand.
+Built while editing a real 10-minute New York travel vlog for the
+Frost Tube channel — every rule in the skill comes from a real review round,
+and every bug it guards against actually happened (see
+[`vlog-editor-skill/references/lessons.md`](vlog-editor-skill/references/lessons.md)).
 
-## How it works
+## What it does
 
-```
-raw/*.mp4
-  │
-  ├─ transcribe  faster-whisper, word-level timestamps  →  index/<id>.json
-  ├─ cards       one compact summary per video          →  index/cards.json
-  ├─ select      Claude reasons across all cards        →  edl.json
-  └─ render      ffmpeg                                 →  out/final.mp4
-```
-
-Each stage reads files and writes files. No stage holds state in memory across
-runs, and each is runnable on its own — there is no orchestration framework.
-
-Why the split matters: **selection is the deliverable, not the render.** The
-`select` stage emits an `edl.json` that you read and edit by hand before anything
-gets encoded. Rendering is a separate command you run once you trust the cuts.
-
-### Why cards
-
-All ~130 summaries have to fit in one context window together, because choosing
-take 3 of the coffee-shop bit over take 1 requires seeing both at once. Cards are
-the compression that makes that possible. Full transcripts are fetched on demand,
-only for the files that make the shortlist.
+| Stage | How |
+|---|---|
+| Understand footage | inventory (length, fps, rotation, HDR, audio, time, GPS) + contact sheets; parse an existing DaVinci timeline |
+| Find the story | local transcription with word timestamps; reads transcripts like a script |
+| Edit | a Python *plan* (talk / B-roll / sections / music) → `plan.json` |
+| Render | per-shot GPU HDR→SDR tone-mapping, rotation fixes, grade, captions & titles, transitions, slow-mo/ramps, cached and length-verified |
+| Music | beat analysis, cuts on the beat, songs carried across sections, dips under speech, two-pass loudness (-14 LUFS) |
+| Check | clipped words, mid-sentence endings, caption proof-read, vertical clips in montages, songs running out, A/V drift, frame gaps |
+| Package | 4K HEVC export, house-style thumbnails with subject cut-out, research-backed titles, horizontal trailer |
+| Clean up | after posting, frees the GBs of caches — keeps finals, thumbnails and re-editable plans |
 
 ## Requirements
 
-- Python 3.11+
-- ffmpeg (`brew install ffmpeg`)
-- faster-whisper
-- Dependencies beyond the standard library are resisted on purpose. Standard
-  library, plus faster-whisper and ffmpeg-python.
+- macOS on Apple Silicon (VideoToolbox HDR tone-mapping, mlx-whisper, Apple Vision)
+- [Claude Code](https://claude.com/claude-code) (CLI or desktop app)
+- `ffmpeg` (Homebrew: `brew install ffmpeg`), Python 3.10+, Xcode command-line tools (`swiftc`)
 
-## Usage
+## Install
 
 ```bash
-python transcribe.py raw/          # populate index/, skips existing
-python cards.py                    # index/*.json -> index/cards.json
-python render.py edl.json out/final.mp4
+git clone https://github.com/rohitraju1966/VideoEditBot.git "$HOME/Desktop/Video Editor"   # or anywhere you like
+cd "$HOME/Desktop/Video Editor"
+./setup.sh
 ```
 
-Transcription is expensive and idempotent — it checks for an existing
-`index/<id>.json` and skips rather than recomputing.
+`setup.sh` creates a Python venv (`~/.vlog-editor-venv`) with `mlx-whisper`, `numpy`, `Pillow`; builds the
+Apple Vision cut-out tool; and links the skill into `~/.claude/skills/vlog-editor` so Claude Code picks it up.
+The Whisper model (~1.6 GB) downloads on first transcription.
 
-## Formats
+## Use
 
-Both output formats are plain JSON, on purpose: you are expected to open them.
+In Claude Code, just ask:
 
-### `edl.json`
+> "Edit my New York trip into a vlog — clips are in ~/Downloads/NYC clips, music in the Video Editor music folder."
 
-```json
-[
-  {
-    "source": "raw/vlog_042.mp4",
-    "start": 12.40,
-    "end": 48.15,
-    "reason": "clean intro, best of 3 takes"
-  }
-]
-```
+Claude will inventory the footage, propose a structure, then send ~1.5-minute preview parts as they render.
+Give notes with timestamps; only the changed shots re-render. When you're happy it renders 4K, makes
+thumbnails, and (optionally) a trailer. After you post: "the video is posted — clean up".
 
-Timestamps are floats in seconds, relative to the source file. Order in the array
-is order in the output.
+### Make it yours: a channel profile
 
-Every entry carries a `reason`. If a cut cannot be justified in a short phrase,
-it is a guess, and it gets flagged rather than quietly included.
+Copy `vlog-editor-skill/profiles/example.md` to `profiles/<your-channel>.md` and fill in your name
+spelling, intro/outro asset, tone (e.g. family-friendly), thumbnail house style and preferences. Profiles are
+gitignored — your channel stays private.
 
-### Cards
-
-One per video: source path, duration, a one-line topic, a 2–3 line summary,
-quality flags, and timestamps of obvious fumbles or restarts. Kept small so all
-of them fit in context together.
-
-## Rules
-
-- **Never write to `raw/`.** Originals are irreplaceable. Everything this tool
-  produces goes to `index/`, `work/`, or `out/`.
-- **Word-level timestamps or nothing.** Segment-level cuts sound chopped.
-- **Cuts land inside silence, never mid-word.** ~30 ms audio crossfade at every
-  splice.
-- **Fail loudly on a bad file.** Do not silently skip it and hand back a short
-  video.
-
-## Known limitation
-
-Claude cannot see the footage. Every decision is made from transcripts, so a take
-that reads well but looks bad — off-camera gaze, bad framing, someone walking
-through the shot — will pass straight through the filter.
-
-**Assume every EDL needs human review before render.** That is not a temporary
-gap; it is the shape of the tool.
-
-## Repo layout
+## Folder layout
 
 ```
-CLAUDE.md          rules that stay true across sessions
-NOTES.md           moving state: current phase, open questions, what broke
-.claude/skills/    vendored coding standards (see PROVENANCE.md)
-raw/               source footage — gitignored, never written to
-index/             transcripts and cards — gitignored
-work/              intermediate artifacts — gitignored
-out/               rendered video — gitignored
+Video Editor/
+├── vlog-editor-skill/        the skill (committed)
+│   ├── SKILL.md              workflow + editing rules Claude follows
+│   ├── scripts/              render engine and tools
+│   ├── references/           lessons learned, plan format, titles & thumbnails
+│   ├── profiles/example.md   template (your own profile is gitignored)
+│   └── examples/             a complete example plan
+├── assets/                   your intro/outro, logos         (gitignored)
+├── music/                    your reusable music library     (gitignored)
+└── projects/<Video Name>/    plans, finals, thumbnails       (gitignored)
+
+~/Movies/Video Editor Cache/  transcripts + render caches — local only, never synced
 ```
 
-Footage and everything derived from it are gitignored. Nothing large should ever
-reach a commit.
+> Desktop/Documents are often iCloud-synced on macOS. Render caches live in `~/Movies/...` so multi-GB
+> intermediates never upload. Move footage into a synced archive only after the final render.
+
+## Scripts
+
+| script | purpose |
+|---|---|
+| `render.py` | plan.json → video (`--res 1080/2160`, `--only` sections for previews) |
+| `planlib.py` | helpers to write plans: `talk`, `broll`, `sec`, `T`, `clean_montage`, `add_asides`, `pick`, `write_plan` |
+| `clips.py` | footage inventory, contact sheets, frame grids |
+| `transcribe.py` | mlx-whisper transcripts; `--snippet` to hear what's inside a cut |
+| `beats.py` | tempo / first beat / energy per track |
+| `check_plan.py` | pre-render checklist (+ `--captions` proof-read) |
+| `verify.py` | cut waveforms, output A/V sync & loudness, level plots, still frames |
+| `thumbnail.py`, `cutout.swift` | stills, subject cut-out, house-style thumbnails |
+| `cleanup.py` | free space after posting |
+
+## Contributing
+
+Issues and PRs welcome — especially new lessons (what broke, why, the fix) for `references/lessons.md`.
+Please don't commit footage, music or personal profiles.
 
 ## License
 
-Not yet chosen.
+MIT — see [LICENSE](LICENSE). Music, footage and channel assets you use with it remain yours and are not covered.
